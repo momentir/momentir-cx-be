@@ -1,0 +1,382 @@
+basePath: /v1
+definitions:
+  models.ErrorResponse:
+    properties:
+      errors:
+        description: 상세 오류 목록
+        example:
+        - '["필드 검증 실패"]'
+        items:
+          type: string
+        type: array
+      message:
+        description: 오류 메시지
+        example: 요청 처리 중 오류가 발생했습니다.
+        type: string
+    type: object
+  models.FindMyEmailResponse:
+    properties:
+      maskedEmail:
+        description: 마스킹된 이메일 주소
+        example: us***@example.com
+        type: string
+    type: object
+  models.LoginRequest:
+    properties:
+      email:
+        description: 사용자 이메일 주소
+        example: user@example.com
+        type: string
+      password:
+        description: 사용자 비밀번호
+        example: password123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.LoginResponse:
+    properties:
+      expiresIn:
+        description: 토큰 만료 시간(초)
+        example: 3600
+        type: integer
+      token:
+        description: JWT 인증 토큰
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    type: object
+  models.RequestEmailVerificationRequest:
+    properties:
+      email:
+        description: 인증받을 이메일 주소
+        example: user@example.com
+        type: string
+    required:
+    - email
+    type: object
+  models.RequestEmailVerificationResponse:
+    properties:
+      message:
+        description: 응답 메시지
+        example: 인증 코드가 이메일로 발송되었습니다.
+        type: string
+      verificationId:
+        description: 인증 ID
+        example: 12345
+        type: integer
+    type: object
+  models.RequestPasswordResetRequest:
+    properties:
+      email:
+        description: 비밀번호를 재설정할 이메일 주소
+        example: user@example.com
+        type: string
+    required:
+    - email
+    type: object
+  models.ResetPasswordRequest:
+    properties:
+      newPassword:
+        description: 새로운 비밀번호 (8자 이상)
+        example: newpass123
+        minLength: 8
+        type: string
+      token:
+        description: 이메일로 받은 재설정 토큰
+        example: reset_token_abc123
+        type: string
+    required:
+    - newPassword
+    - token
+    type: object
+  models.SignUpRequest:
+    properties:
+      agreedMarketingOptIn:
+        description: 마케팅 수신 동의
+        example: true
+        type: boolean
+      email:
+        description: 이메일 주소
+        example: user@example.com
+        type: string
+      name:
+        description: 사용자 이름
+        example: 홍길동
+        type: string
+      password:
+        description: 비밀번호 (8자 이상)
+        example: password123
+        minLength: 8
+        type: string
+      phone:
+        description: 전화번호
+        example: 010-1234-5678
+        type: string
+    required:
+    - email
+    - name
+    - password
+    - phone
+    type: object
+  models.VerifyEmailRequest:
+    properties:
+      email:
+        description: 인증할 이메일 주소
+        example: user@example.com
+        type: string
+      verificationCode:
+        description: 이메일로 받은 인증 코드
+        example: "123456"
+        type: string
+      verificationId:
+        description: 인증 요청 ID
+        example: 12345
+        type: integer
+    required:
+    - email
+    - verificationCode
+    - verificationId
+    type: object
+host: localhost:8081
+info:
+  contact:
+    email: support@swagger.io
+    name: API 지원팀
+    url: http://www.swagger.io/support
+  description: 사용자 인증, 회원가입, 이메일 인증, 비밀번호 재설정 기능을 제공하는 API 서비스
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: 인증 서비스 API
+  version: "1.0"
+paths:
+  /auth/find-my-email:
+    get:
+      consumes:
+      - application/json
+      description: 이름과 전화번호를 통해 등록된 이메일 주소 찾기
+      parameters:
+      - description: 사용자 이름
+        in: query
+        name: name
+        required: true
+        type: string
+      - description: 전화번호
+        in: query
+        name: phone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 이메일 찾기 성공
+          schema:
+            $ref: '#/definitions/models.FindMyEmailResponse'
+        "400":
+          description: 필수 파라미터 누락
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: 일치하는 계정 없음
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 이메일 찾기
+      tags:
+      - 인증
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 이메일과 비밀번호를 통해 사용자 로그인 처리
+      parameters:
+      - description: 로그인 요청 정보
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 로그인 성공
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+        "400":
+          description: 잘못된 요청 또는 로그인 실패
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 사용자 로그인
+      tags:
+      - 인증
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: 인증된 사용자 로그아웃 처리
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 로그아웃 성공
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: 사용자 로그아웃
+      tags:
+      - 인증
+  /auth/request-email-verification:
+    post:
+      consumes:
+      - application/json
+      description: 이메일 주소로 인증 코드 발송 요청
+      parameters:
+      - description: 이메일 인증 요청 정보
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RequestEmailVerificationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 인증 코드 발송 성공
+          schema:
+            $ref: '#/definitions/models.RequestEmailVerificationResponse'
+        "400":
+          description: 잘못된 요청
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 이메일 인증 요청
+      tags:
+      - 인증
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: 이메일로 비밀번호 재설정 링크 발송
+      parameters:
+      - description: 비밀번호 재설정 요청 정보
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RequestPasswordResetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 재설정 이메일 발송 성공
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: 잘못된 요청
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 비밀번호 재설정 요청
+      tags:
+      - 인증
+  /auth/reset-password/password:
+    put:
+      consumes:
+      - application/json
+      description: 재설정 토큰을 통해 새로운 비밀번호로 변경
+      parameters:
+      - description: 비밀번호 재설정 정보
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 비밀번호 재설정 성공
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: 잘못된 요청 또는 토큰 오류
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 비밀번호 재설정
+      tags:
+      - 인증
+  /auth/sign-up:
+    post:
+      consumes:
+      - application/json
+      description: 새로운 사용자 계정 생성
+      parameters:
+      - description: 회원가입 요청 정보
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.SignUpRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 회원가입 성공
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: 잘못된 요청 또는 회원가입 실패
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 사용자 회원가입
+      tags:
+      - 인증
+  /auth/verify-email-account:
+    post:
+      consumes:
+      - application/json
+      description: 발송된 인증 코드를 통해 이메일 계정 인증 처리
+      parameters:
+      - description: 계정 인증 요청 정보
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 계정 인증 성공
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: 잘못된 요청 또는 인증 실패
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 이메일 계정 인증
+      tags:
+      - 인증
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

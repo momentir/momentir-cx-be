@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=auth_user
+      - DB_PASSWORD=auth_password
+      - DB_NAME=auth_service
+      - JWT_SECRET_KEY=your-super-secret-key-change-this-in-production
+      - AWS_REGION=ap-northeast-2
+      - AWS_SES_ACCESS_KEY=your-access-key
+      - AWS_SES_SECRET_ACCESS_KEY=your-secret-key
+      - AWS_SES_FROM_EMAIL=noreply@yourdomain.com
+      - SERVER_PORT=8081
+    depends_on:
+      - mysql
+    networks:
+      - auth-network
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=auth_service
+      - MYSQL_USER=auth_user
+      - MYSQL_PASSWORD=auth_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - auth-network
+
+volumes:
+  mysql_data:
+
+networks:
+  auth-network:
+    driver: bridge
