@@ -42,6 +42,9 @@ jobs:
     - name: Download dependencies
       run: go mod download
 
+    - name: Tidy go.mod
+      run: go mod tidy
+
     - name: Verify dependencies
       run: go mod verify
 
@@ -52,11 +55,10 @@ jobs:
       run: |
         # Create test coverage directory
         mkdir -p coverage
-        # Run tests with coverage (uncomment when tests are available)
-        # go test -v -race -buildvcs=false -coverprofile=coverage/coverage.out ./...
-        # go tool cover -html=coverage/coverage.out -o coverage/coverage.html
-        echo "Tests would run here - add your Go tests to enable this step"
-        echo "Example: go test -v ./internal/..."
+        # Run tests with coverage
+        go test -v -race -buildvcs=false -coverprofile=coverage/coverage.out ./...
+        # Generate coverage HTML report
+        go tool cover -html=coverage/coverage.out -o coverage/coverage.html
 
     - name: Run go vet
       run: go vet ./...
