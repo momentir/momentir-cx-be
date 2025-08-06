@@ -1,0 +1,90 @@
+{
+  "family": "momentir-cx-be",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::940482450816:role/ecsTaskExecutionRole-momentir-cx-be",
+  "taskRoleArn": "arn:aws:iam::940482450816:role/ecsTaskRole-momentir-cx-be",
+  "containerDefinitions": [
+    {
+      "name": "momentir-cx-be",
+      "image": "940482450816.dkr.ecr.ap-northeast-2.amazonaws.com/momentir-cx-be:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8081,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "GIN_MODE",
+          "value": "release"
+        },
+        {
+          "name": "SKIP_MIGRATION",
+          "value": "true"
+        },
+        {
+          "name": "SERVER_PORT",
+          "value": "8081"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "JWT_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:ap-northeast-2:940482450816:parameter/momentir-cx-be/JWT_SECRET_KEY"
+        },
+        {
+          "name": "DATABASE_HOST",
+          "valueFrom": "arn:aws:ssm:ap-northeast-2:940482450816:parameter/momentir-cx-be/DATABASE_HOST"
+        },
+        {
+          "name": "DATABASE_PORT",
+          "valueFrom": "arn:aws:ssm:ap-northeast-2:940482450816:parameter/momentir-cx-be/DATABASE_PORT"
+        },
+        {
+          "name": "DATABASE_USERNAME",
+          "valueFrom": "arn:aws:ssm:ap-northeast-2:940482450816:parameter/momentir-cx-be/DATABASE_USERNAME"
+        },
+        {
+          "name": "DATABASE_PASSWORD",
+          "valueFrom": "arn:aws:ssm:ap-northeast-2:940482450816:parameter/momentir-cx-be/DATABASE_PASSWORD"
+        },
+        {
+          "name": "DATABASE_DEFAULT_SCHEMA",
+          "valueFrom": "arn:aws:ssm:ap-northeast-2:940482450816:parameter/momentir-cx-be/DATABASE_DEFAULT_SCHEMA"
+        },
+        {
+          "name": "AWS_SES_ACCESS_KEY",
+          "valueFrom": "arn:aws:ssm:ap-northeast-2:940482450816:parameter/momentir-cx-be/AWS_SES_ACCESS_KEY"
+        },
+        {
+          "name": "AWS_SES_SECRET_ACCESS_KEY",
+          "valueFrom": "arn:aws:ssm:ap-northeast-2:940482450816:parameter/momentir-cx-be/AWS_SES_SECRET_ACCESS_KEY"
+        },
+        {
+          "name": "AWS_SES_FROM_EMAIL",
+          "valueFrom": "arn:aws:ssm:ap-northeast-2:940482450816:parameter/momentir-cx-be/AWS_SES_FROM_EMAIL"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/momentir-cx-be",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs",
+          "awslogs-create-group": "true"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

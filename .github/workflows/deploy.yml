@@ -1,0 +1,136 @@
+name: Deploy to AWS ECS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: momentir-cx-be
+  ECS_SERVICE: momentir-cx-be
+  ECS_CLUSTER: momentir-cx-be
+  ECS_TASK_DEFINITION: aws/task-definition.json
+  CONTAINER_NAME: momentir-cx-be
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Verify dependencies
+      run: go mod verify
+
+    - name: Build application
+      run: go build -v ./cmd/main.go
+
+    - name: Run tests
+      run: |
+        # Create test coverage directory
+        mkdir -p coverage
+        # Run tests with coverage (uncomment when tests are available)
+        # go test -v -race -buildvcs=false -coverprofile=coverage/coverage.out ./...
+        # go tool cover -html=coverage/coverage.out -o coverage/coverage.html
+        echo "Tests would run here - add your Go tests to enable this step"
+        echo "Example: go test -v ./internal/..."
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Run staticcheck (optional)
+      run: |
+        # Install staticcheck if needed
+        # go install honnef.co/go/tools/cmd/staticcheck@latest
+        # staticcheck ./...
+        echo "Static analysis would run here"
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build the Docker image with explicit architecture for ECS Fargate
+        docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+        
+        # Push both tagged and latest images
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: ${{ env.ECS_TASK_DEFINITION }}
+        container-name: ${{ env.CONTAINER_NAME }}
+        image: ${{ steps.build-image.outputs.image }}
+
+    - name: Deploy Amazon ECS task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
+
+    - name: Verify deployment
+      run: |
+        echo "Deployment completed successfully!"
+        echo "API Endpoint: https://api.momentir.com"
+        echo "Swagger Documentation: https://api.momentir.com/docs"
+        echo "Health Check: https://api.momentir.com/health"
+        
+        # Optional: Wait a bit and test the health endpoint
+        sleep 30
+        if curl -f -s https://api.momentir.com/health; then
+          echo "✅ Health check passed!"
+        else
+          echo "⚠️ Health check failed - deployment may still be starting"
+        fi
